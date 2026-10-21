@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>CineCam AI</title>
+<style>
+:root{--bg:#0a0b0d;--panel:#14161a;--line:#262a31;--ink:#ecebe6;--mute:#8c909a;--gold:#d9b25f;--cyan:#4fd6e6;--r:14px;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.app{max-width:960px;margin:0 auto;padding:14px;display:grid;gap:14px}
+@media(min-width:820px){.app{grid-template-columns:1.1fr 1fr;align-items:start}.head,.full{grid-column:1/-1}.stage{position:sticky;top:14px}}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font:italic 600 26px Georgia,"Times New Roman",serif;margin:0;letter-spacing:.2px}h1 b{color:var(--gold);font-style:normal}
+.badge{font-size:12px;color:var(--cyan);border:1px solid var(--cyan);border-radius:99px;padding:3px 10px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.stage{display:grid;gap:10px}
+.view{position:relative;aspect-ratio:4/5;border-radius:var(--r);overflow:hidden;background:#000;touch-action:none;user-select:none}
+.view img,.view .lay{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.view .lay{pointer-events:none}
+#after{position:absolute;inset:0}
+#before{clip-path:inset(0 50% 0 0)}
+.tag{position:absolute;top:10px;font-size:11px;padding:2px 8px;border-radius:99px;background:#000a;color:#fff;z-index:3}
+.handle{position:absolute;top:0;bottom:0;left:50%;width:2px;background:var(--gold);z-index:4;pointer-events:none}
+.handle:after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:var(--gold);color:#111;display:grid;place-items:center;font-size:16px}
+#cmp{position:absolute;inset:0;width:100%;height:100%;opacity:0;z-index:5;cursor:ew-resize;margin:0}
+.empty{position:absolute;inset:0;display:grid;place-content:center;text-align:center;gap:6px;color:var(--mute);z-index:2;padding:20px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button,.btn{font:inherit;color:var(--ink);background:#1c1f25;border:1px solid var(--line);border-radius:10px;padding:9px 13px;cursor:pointer}
+button:hover,.btn:hover{border-color:var(--mute)}
+button:focus-visible,.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.pri{background:var(--gold);color:#15110a;border-color:var(--gold);font-weight:600}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:12px}
+.tabs button{border:0;border-radius:0;background:none;color:var(--mute);padding:9px 12px;white-space:nowrap;border-bottom:2px solid transparent}
+.tabs button[aria-selected=true]{color:var(--gold);border-color:var(--gold)}
+.pane{display:none}.pane.on{display:block}
+h3{margin:14px 0 8px;font-size:13px;color:var(--mute);font-weight:600}h3:first-child{margin-top:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
+.card{text-align:left;padding:10px;display:grid;gap:2px;min-height:64px}
+.card small{color:var(--mute);font-size:12px}
+.card[aria-pressed=true]{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+.sl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;margin:10px 0}
+.sl output{color:var(--gold);font-variant-numeric:tabular-nums}
+input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--gold)}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:10px}
+.sw small{display:block;color:var(--mute)}
+textarea{width:100%;min-height:190px;background:#0d0f12;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--cyan);color:#041013;padding:8px 16px;border-radius:99px;font-weight:600;opacity:0;transition:opacity .2s;z-index:50;pointer-events:none}
+.toast.show{opacity:1}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:6px}
+.gal img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer;border:2px solid transparent}
+.gal img.sel{border-color:var(--gold)}
+.note{color:var(--mute);font-size:12px;margin:8px 0 0}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head>
+<body><div class="app">
+<div class="head"><h1>Cine<b>Cam</b> AI</h1><span class="badge">Live preview + prompt engine</span></div>
+
+<section class="stage">
+ <div class="view" id="view">
+  <div class="empty" id="empty"><strong>Add a photo to start</strong><span>Pick from your gallery or load the sample scene.</span></div>
+  <img id="after" alt="Edited preview" hidden>
+  <img id="blur" class="lay" alt="" hidden>
+  <div class="lay" id="mood"></div>
+  <div class="lay" id="vig"></div>
+  <div class="lay" id="grain"></div>
+  <img id="before" alt="Original" hidden>
+  <span class="tag" style="left:10px">Before</span><span class="tag" style="right:10px">After</span>
+  <div class="handle" id="handle"></div>
+  <input type="range" id="cmp" min="0" max="100" value="50" aria-label="Before and after comparison">
+ </div>
+ <div class="row">
+  <label class="btn pri">Choose photo<input type="file" id="file" accept="image/*" hidden multiple></label>
+  <button id="sample">Sample scene</button>
+  <button id="dl">Download image</button>
+ </div>
+ <div class="gal panel" id="gal" hidden></div>
+ <p class="note">The live preview approximates optics and grading in your browser. The real subject-safe edit, crowd removal, wardrobe and background swap run in the AI model you send the master prompt to.</p>
+</section>
+
+<section class="panel">
+ <div class="tabs" role="tablist" id="tabs">
+  <button role="tab" aria-selected="true" data-p="p1">Camera</button>
+  <button role="tab" aria-selected="false" data-p="p2">Mood</button>
+  <button role="tab" aria-selected="false" data-p="p3">Edit</button>
+  <button role="tab" aria-selected="false" data-p="p4">Optics</button>
+ </div>
+ <div class="pane on" id="p1"><h3>DSLR and mirrorless</h3><div class="cards" data-k="cam" data-g="dslr"></div><h3>iPhone</h3><div class="cards" data-k="cam" data-g="iphone"></div></div>
+ <div class="pane" id="p2"><h3>Atmosphere</h3><div class="cards" data-k="mood"></div></div>
+ <div class="pane" id="p3">
+  <div class="sw"><div>Lock subject identity<small>Face, expression, pose and clothing stay unchanged</small></div><input type="checkbox" id="lock" checked></div>
+  <div class="sw"><div>Remove crowd and clutter<small>Rebuild with foliage, walls and soft textures</small></div><input type="checkbox" id="crowd" checked></div>
+  <h3>Wardrobe</h3><div class="cards" data-k="ward"></div>
+  <h3>Background</h3><div class="cards" data-k="bg"></div>
+ </div>
+ <div class="pane" id="p4">
+  <div class="sl"><label for="bokeh">Background blur (bokeh)</label><output></output><input type="range" id="bokeh" min="0" max="100" value="65"></div>
+  <div class="sl"><label for="dof">Focus area (depth of field)</label><output></output><input type="range" id="dof" min="10" max="90" value="40"></div>
+  <div class="sl"><label for="grainS">Film grain</label><output></output><input type="range" id="grainS" min="0" max="100" value="25"></div>
+  <div class="sl"><label for="inten">Image intensity</label><output></output><input type="range" id="inten" min="0" max="150" value="100"></div>
+  <button id="reset">Reset all</button>
+ </div>
+</section>
+
+<section class="panel full">
+ <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px"><strong>Master prompt</strong>
+  <div class="row"><button id="cp" class="pri">Copy prompt</button><button id="cj">Copy API JSON</button><button id="dp">Save .txt</button></div></div>
+ <textarea id="out" readonly aria-label="Generated master prompt"></textarea>
+ <p class="note">Paste into Replicate, Flux, Stable Diffusion or Midjourney. Use an image-to-image or edit endpoint and pass your photo as the input image. The JSON button copies a generic payload to adapt to your provider.</p>
+</section>
+</div><div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+// f: filter multipliers [contrast,saturate,brightness,sepia,hue]; p: prompt text
+const DATA={
+ cam:{
+  a7:{g:'dslr',t:'Sony A7 IV',s:'85mm G Master',f:[1.08,1.05,1,0,0],p:'shot on Sony A7 IV with an 85mm f/1.4 G Master lens, crisp micro-contrast, natural skin rendering'},
+  r5:{g:'dslr',t:'Canon EOS R5',s:'50mm RF',f:[1.05,1.08,1.02,0,0],p:'shot on Canon EOS R5 with a 50mm RF f/1.2 lens, warm true-to-life Canon color science'},
+  z9:{g:'dslr',t:'Nikon Z9',s:'105mm',f:[1.1,1,1,0,0],p:'shot on Nikon Z9 with a 105mm f/1.4 lens, strong subject separation, fine detail'},
+  hb:{g:'dslr',t:'Hasselblad',s:'Medium format',f:[1.04,1.03,1.03,0,0],p:'shot on Hasselblad medium format with a 100mm f/2.2 lens, smooth tonal gradation, rich 16-bit color depth'},
+  ip:{g:'iphone',t:'iPhone Cinematic',s:'15/16 Pro Max',f:[1.06,1.1,1.04,0,0],p:'shot on iPhone 16 Pro Max in Cinematic Mode, soft computational depth, vivid but natural color'},
+  np:{g:'iphone',t:'Natural Portrait',s:'iPhone portrait',f:[1.02,1.02,1.03,0,0],p:'shot on iPhone Portrait Mode, natural studio-style lighting, gentle background separation'},
+  nm:{g:'iphone',t:'Dynamic Night',s:'iPhone Night mode',f:[1.12,1.05,.92,0,0],p:'shot on iPhone Night Mode, clean low-noise shadows, preserved highlight detail'}},
+ mood:{
+  gh:{t:'Golden hour',s:'Warm low sun',f:[1.06,1.12,1.04,.22,-6],c:'#ffb347',a:.35,p:'rich warm golden hour light with subtle volumetric sun rays and a light atmospheric haze catching the sunlight'},
+  dn:{t:'Cinematic dusk',s:'Teal and amber',f:[1.12,1.05,.94,.1,8],c:'#e0763c',a:.3,p:'cinematic dawn/dusk atmosphere, teal shadows with amber highlights, deep filmic contrast'},
+  sm:{t:'Smoke and rays',s:'Volumetric light',f:[1.08,.95,1,.08,0],c:'#cfd8dc',a:.3,p:'soft smoke and volumetric light rays cutting through the scene, gentle haze, backlit glow'},
+  mn:{t:'Moody night',s:'Soft ambient',f:[1.2,.95,.82,0,10],c:'#1d3a5f',a:.4,p:'moody cinematic night ambiance, soft ambient light, deep shadows and rich contrast'}},
+ ward:{
+  w0:{t:'Keep original',s:'No change',p:''},
+  suit:{t:'Formal suit',s:'Tailored',p:'upgrade the outfit to a perfectly tailored formal suit, keeping face, body shape and pose unchanged'},
+  fest:{t:'Festive attire',s:'Traditional',p:'upgrade the outfit to elegant festive traditional attire with refined fabric detail, keeping face, body shape and pose unchanged'},
+  den:{t:'Casual denim',s:'Relaxed',p:'upgrade the outfit to stylish casual denim wear, keeping face, body shape and pose unchanged'}},
+ bg:{
+  b0:{t:'Keep original',s:'Clean only',p:''},
+  pine:{t:'Pine forest',s:'Misty trees',p:'replace the background with a misty pine forest, matching edge lighting on the subject'},
+  vill:{t:'Village',s:'Rustic landscape',p:'replace the background with a rustic village landscape, matching edge lighting on the subject'},
+  city:{t:'City skyline',s:'Urban',p:'replace the background with an urban city skyline, matching edge lighting on the subject'}}
+};
+const S={cam:'a7',mood:'gh',ward:'w0',bg:'b0'};
+let imgs=[],cur=null;
+
+// build cards
+document.querySelectorAll('.cards').forEach(box=>{
+ const k=box.dataset.k;
+ Object.entries(DATA[k]).forEach(([id,d])=>{
+  if(box.dataset.g&&d.g!==box.dataset.g)return;
+  const b=document.createElement('button');b.className='card';b.dataset.id=id;
+  b.innerHTML='<span>'+d.t+'</span><small>'+d.s+'</small>';
+  b.onclick=()=>{S[k]=id;sync()};box.appendChild(b)});
+});
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('#tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+ document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===b.dataset.p))});
+
+const V=()=>({bo:+$('#bokeh').value,dof:+$('#dof').value,gr:+$('#grainS').value,it:+$('#inten').value/100,lock:$('#lock').checked,crowd:$('#crowd').checked});
+function filt(){
+ const c=DATA.cam[S.cam].f,m=DATA.mood[S.mood].f,i=V().it,L=(x)=>1+(x-1)*i;
+ return `contrast(${L(c[0]*m[0]).toFixed(3)}) saturate(${L(c[1]*m[1]).toFixed(3)}) brightness(${L(c[2]*m[2]).toFixed(3)}) sepia(${((c[3]+m[3])*i).toFixed(3)}) hue-rotate(${(m[4]*i).toFixed(1)}deg)`}
+
+// grain texture
+const gc=document.createElement('canvas');gc.width=gc.height=128;
+(()=>{const x=gc.getContext('2d'),d=x.createImageData(128,128);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255}x.putImageData(d,0,0)})();
+$('#grain').style.backgroundImage=`url(${gc.toDataURL()})`;
+
+function sync(){
+ document.querySelectorAll('.card').forEach(c=>{const k=c.parentElement.dataset.k;c.setAttribute('aria-pressed',S[k]===c.dataset.id)});
+ const v=V(),m=DATA.mood[S.mood];
+ document.querySelectorAll('.sl').forEach(s=>{const r=s.querySelector('input');s.querySelector('output').textContent=r.value+(r.id==='inten'?'%':'')});
+ $('#after').style.filter=filt();
+ const bl=$('#blur');bl.style.filter=filt()+` blur(${v.bo*.22}px)`;
+ const m1=`radial-gradient(ellipse 60% 65% at 50% 52%,transparent ${v.dof}%,#000 ${v.dof+28}%)`;
+ bl.style.maskImage=bl.style.webkitMaskImage=m1;bl.style.opacity=v.bo?1:0;
+ $('#mood').style.cssText=`background:linear-gradient(160deg,${m.c},transparent 70%);mix-blend-mode:soft-light;opacity:${m.a*v.it*1.6}`;
+ $('#vig').style.background=`radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,${.45*v.it}))`;
+ $('#grain').style.cssText+=`;mix-blend-mode:overlay;opacity:${v.gr/160}`;
+ $('#out').value=prompt_();
+}
+function prompt_(){
+ const v=V(),c=DATA.cam[S.cam],m=DATA.mood[S.mood],w=DATA.ward[S.ward],b=DATA.bg[S.bg],P=[];
+ P.push('Edit this photo, do not regenerate it. Transform it into an ultra-realistic, cinema and DSLR-grade photograph.');
+ if(v.lock)P.push('Keep the main subject\u2019s face, facial features, natural expression, eye identity, skin tone, body shape, original pose and exact clothing completely unchanged. No face swap, no reshaping, no skin smoothing.');
+ if(v.crowd)P.push('Remove every background crowd, passerby and distracting clutter, then rebuild the background seamlessly with natural trees, foliage, rustic walls or soft environmental textures.');
+ if(w.p)P.push(w.p+'.');
+ if(b.p)P.push(b.p+'.');
+ P.push('Camera look: '+c.p+'.');
+ P.push(`Optics: sharp subject focus with a creamy background blur (blur strength ${v.bo}/100, focus falloff ${v.dof}/100), smooth foreground-to-background transition, natural circular bokeh.`);
+ P.push('Mood: '+m.p+'.');
+ P.push(`Grade: professional filmic color grading, deep shadows, realistic highlight roll-off, overall intensity ${Math.round(v.it*100)}%.`);
+ P.push(v.gr?`Add subtle organic film grain (${v.gr}/100) and keep natural skin, hair and fabric texture.`:'Keep natural skin, hair and fabric texture with no added grain.');
+ P.push('Avoid: plastic skin, over-saturation, harsh AI filter look, unnatural sharpening, warped hands, extra limbs, text, watermarks.');
+ return P.join('\n\n');
+}
+document.querySelectorAll('input[type=range]:not(#cmp),#lock,#crowd').forEach(e=>e.oninput=sync);
+
+// image loading
+function show(u){
+ cur=u;['after','before','blur'].forEach(i=>{const e=$('#'+i);e.src=u;e.hidden=false});$('#empty').hidden=true;
+ document.querySelectorAll('.gal img').forEach(i=>i.classList.toggle('sel',i.src===u));sync()}
+function addImg(u){imgs.push(u);const g=$('#gal'),i=new Image();i.src=u;i.alt='Gallery photo';i.onclick=()=>show(u);g.appendChild(i);g.hidden=false;show(u)}
+$('#file').onchange=e=>[...e.target.files].forEach(f=>{const r=new FileReader();r.onload=()=>addImg(r.result);r.readAsDataURL(f)});
+$('#sample').onclick=()=>{
+ const c=document.createElement('canvas');c.width=800;c.height=1000;const x=c.getContext('2d');
+ let g=x.createLinearGradient(0,0,0,1000);g.addColorStop(0,'#7fa6c9');g.addColorStop(.55,'#d8c9a6');g.addColorStop(1,'#4d6b3a');x.fillStyle=g;x.fillRect(0,0,800,1000);
+ for(let i=0;i<9;i++){x.fillStyle=`rgba(40,${70+i*8},50,.8)`;x.beginPath();x.arc(60+i*95,560,70+(i%3)*20,0,7);x.fill()}
+ for(let i=0;i<14;i++){x.fillStyle='rgba(60,50,45,.7)';x.fillRect(30+i*55,640,18,60);x.beginPath();x.arc(39+i*55,630,13,0,7);x.fill()}
+ x.fillStyle='#c68a64';x.beginPath();x.arc(400,520,75,0,7);x.fill();x.fillStyle='#2b3c5a';x.fillRect(310,600,180,400);
+ addImg(c.toDataURL('image/jpeg',.9))};
+
+// compare slider
+const cmp=$('#cmp');cmp.oninput=()=>{$('#before').style.clipPath=`inset(0 ${100-cmp.value}% 0 0)`;$('#handle').style.left=cmp.value+'%'};
+
+// download (renders filters, bokeh mask, mood, vignette and grain to a canvas)
+$('#dl').onclick=()=>{
+ if(!cur)return toast('Add a photo first');
+ const im=$('#after'),W=im.naturalWidth,H=im.naturalHeight,v=V(),m=DATA.mood[S.mood];
+ const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+ x.filter=filt();x.drawImage(im,0,0);x.filter='none';
+ if(v.bo){const o=document.createElement('canvas');o.width=W;o.height=H;const ox=o.getContext('2d');
+  ox.filter=filt()+` blur(${v.bo*.22*W/480}px)`;ox.drawImage(im,0,0);ox.filter='none';ox.globalCompositeOperation='destination-in';
+  ox.save();ox.translate(W/2,H*.52);ox.scale(.6*W*1.2,.65*H*1.2);
+  const rg=ox.createRadialGradient(0,0,0,0,0,1);rg.addColorStop(v.dof/100,'rgba(0,0,0,0)');rg.addColorStop(Math.min(1,(v.dof+28)/100),'#000');rg.addColorStop(1,'#000');
+  ox.fillStyle=rg;ox.fillRect(-2,-2,4,4);ox.restore();x.drawImage(o,0,0)}
+ x.globalCompositeOperation='soft-light';x.globalAlpha=Math.min(1,m.a*v.it*1.6);
+ const lg=x.createLinearGradient(0,0,W*.4,H);lg.addColorStop(0,m.c);lg.addColorStop(.7,'rgba(0,0,0,0)');x.fillStyle=lg;x.fillRect(0,0,W,H);
+ x.globalCompositeOperation='source-over';x.globalAlpha=1;
+ const vg=x.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(0,0,0,${.45*v.it})`);x.fillStyle=vg;x.fillRect(0,0,W,H);
+ x.globalCompositeOperation='overlay';x.globalAlpha=v.gr/160;x.fillStyle=x.createPattern(gc,'repeat');x.fillRect(0,0,W,H);
+ c.toBlob(b=>save(b,'cinecam-preview.png'),'image/png')};
+function save(b,n){const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('Saved '+n)}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1800)}
+async function copy(t,ok){try{await navigator.clipboard.writeText(t)}catch{$('#out').select();document.execCommand('copy')}toast(ok)}
+$('#cp').onclick=()=>copy($('#out').value,'Prompt copied');
+$('#cj').onclick=()=>{const v=V();copy(JSON.stringify({prompt:$('#out').value,negative_prompt:'plastic skin, distorted face, extra limbs, text, watermark, oversaturated',strength:+(.25+.35*v.it).toFixed(2),guidance_scale:6,input_image:'<YOUR_IMAGE_URL_OR_BASE64>',meta:{camera:S.cam,mood:S.mood,wardrobe:S.ward,background:S.bg,...v}},null,2),'API JSON copied')};
+$('#dp').onclick=()=>save(new Blob([$('#out').value],{type:'text/plain'}),'cinecam-prompt.txt');
+$('#reset').onclick=()=>{[['bokeh',65],['dof',40],['grainS',25],['inten',100]].forEach(([i,v])=>$('#'+i).value=v);Object.assign(S,{cam:'a7',mood:'gh',ward:'w0',bg:'b0'});sync()};
+sync();
+</script></body></html>
